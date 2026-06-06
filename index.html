@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Attendance Lite</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="container header">
+      <div>
+        <h1>Smart Attendance Lite</h1>
+        <p class="muted">A super-simple, offline-first attendance system for hackathon demos.</p>
+      </div>
+      <div class="pill" id="storageStatus">Storage: ready</div>
+    </header>
+
+    <main class="container grid">
+      <section class="card full">
+        <div class="row spaceBetween alignCenter">
+          <div>
+            <h2>Select Mode</h2>
+            <p class="muted">Students only see Student mode. Faculty uses Faculty mode.</p>
+          </div>
+          <div class="row">
+            <button id="modeStudentBtn" class="primary">Student</button>
+            <button id="modeFacultyBtn">Faculty</button>
+          </div>
+        </div>
+        <div class="muted small" id="modeHint">—</div>
+      </section>
+
+      <div id="facultySection" class="fullWidth">
+      <section class="card full">
+        <div class="row spaceBetween alignCenter">
+          <div>
+            <h2>Teacher Mode (PIN protected)</h2>
+            <p class="muted">
+              Unlock teacher actions (create session, manage classes, export reports). Students only need the Check-in box.
+            </p>
+          </div>
+          <div class="row">
+            <label class="pinLabel">
+              PIN
+              <input id="pinInput" placeholder="Set or enter PIN" inputmode="numeric" />
+            </label>
+            <button id="unlockBtn" class="primary">Unlock</button>
+            <button id="lockBtn">Lock</button>
+          </div>
+        </div>
+        <div class="muted small" id="pinMsg">Tip: first time, enter a new PIN and click Unlock to set it.</div>
+      </section>
+
+      <section class="card teacherOnly">
+        <h2>1) Create Session (Teacher)</h2>
+        <p class="muted">
+          Create a live attendance session. Students can join via <b>QR</b> (recommended) or the <b>6-digit code</b>.
+        </p>
+
+        <div class="row">
+          <label>
+            Course / Class
+            <select id="courseSelect"></select>
+          </label>
+          <label>
+            Session name
+            <input id="sessionName" placeholder="e.g., Unit-2 Lecture" />
+          </label>
+        </div>
+
+        <div class="row">
+          <label>
+            Room (optional)
+            <input id="roomName" placeholder="e.g., CSE-201" />
+          </label>
+          <label>
+            Duration (minutes)
+            <input id="duration" type="number" min="5" max="480" value="60" />
+          </label>
+        </div>
+
+        <div class="row">
+          <label>
+            Geo-fence radius (meters)
+            <input id="geoRadius" type="number" min="10" max="1000" value="150" />
+          </label>
+          <div class="stack">
+            <button id="setGeoBtn">Set classroom location</button>
+            <div class="muted small" id="geoStatus">Location not set</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <button id="createSessionBtn" class="primary">Create session</button>
+          <button id="endSessionBtn">End active session</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row">
+          <div>
+            <div class="muted">Active session code</div>
+            <div class="code" id="activeCode">—</div>
+            <div class="muted small" id="activeMeta">No active session</div>
+            <div class="muted small" id="joinLink">—</div>
+          </div>
+          <div class="qrWrap">
+            <canvas id="qrCanvas" width="180" height="180" aria-label="QR code"></canvas>
+            <div class="muted small center">Scan to open Student check-in</div>
+          </div>
+        </div>
+      </section>
+      </div>
+
+      <div id="studentSection" class="fullWidth">
+      <section class="card full">
+        <h2>2) Student Check-in</h2>
+        <p class="muted">Enter your roll number + session code. Location is checked (geo-fence).</p>
+
+        <div class="row">
+          <label>
+            Your name
+            <input id="studentName" placeholder="e.g., Aisha Khan" />
+          </label>
+          <label>
+            Roll number / ID
+            <input id="studentId" placeholder="e.g., 22CS014" />
+          </label>
+        </div>
+
+        <div class="row">
+          <label>
+            Session code
+            <input id="sessionCodeInput" placeholder="e.g., 482913" inputmode="numeric" />
+          </label>
+          <div class="stack">
+            <button id="checkInBtn" class="primary">Check in</button>
+            <div class="muted small" id="checkInMsg">—</div>
+          </div>
+        </div>
+      </section>
+      </div>
+
+      <section class="card full teacherOnly">
+        <div class="row spaceBetween alignCenter">
+          <div>
+            <h2>3) Teacher Dashboard + Reports</h2>
+            <p class="muted">View check-ins, export, and generate attendance % + defaulter list.</p>
+          </div>
+          <div class="row">
+            <button id="exportSessionCsvBtn">Export session CSV</button>
+            <button id="exportCourseReportBtn">Export course report CSV</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="muted small">Active session</div>
+            <div id="statSession" class="statVal">—</div>
+          </div>
+          <div class="stat">
+            <div class="muted small">Total check-ins</div>
+            <div id="statTotal" class="statVal">0</div>
+          </div>
+          <div class="stat">
+            <div class="muted small">Unique IDs</div>
+            <div id="statUnique" class="statVal">0</div>
+          </div>
+          <div class="stat">
+            <div class="muted small">Last check-in</div>
+            <div id="statLast" class="statVal">—</div>
+          </div>
+        </div>
+
+        <div class="tableWrap">
+          <table id="attendanceTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Roll/ID</th>
+                <th>Course</th>
+                <th>Session</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row">
+          <div class="cardInner">
+            <h3>Class / Course Setup</h3>
+            <p class="muted small">Create courses and upload a roster CSV to reduce proxy attendance.</p>
+
+            <div class="row">
+              <label>
+                New course name
+                <input id="newCourseName" placeholder="e.g., CSE 3rd Year - Section A" />
+              </label>
+              <label>
+                Subject
+                <input id="newCourseSubject" placeholder="e.g., DBMS" />
+              </label>
+            </div>
+            <div class="row">
+              <button id="addCourseBtn" class="primary">Add course</button>
+              <button id="deleteCourseBtn" class="danger">Delete selected course</button>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="row">
+              <label>
+                Upload roster CSV (roll,name)
+                <input id="rosterFile" type="file" accept=".csv,text/csv" />
+              </label>
+              <button id="importRosterBtn">Import roster</button>
+            </div>
+            <div class="muted small" id="rosterStatus">No roster loaded.</div>
+          </div>
+
+          <div class="cardInner">
+            <h3>Google Sheets Sync (optional)</h3>
+            <p class="muted small">
+              Paste a Google Apps Script Web App URL to auto-save each check-in to a Sheet.
+            </p>
+            <label>
+              Webhook URL
+              <input id="sheetsWebhook" placeholder="https://script.google.com/macros/s/....../exec" />
+            </label>
+            <div class="row">
+              <button id="saveWebhookBtn" class="primary">Save</button>
+              <button id="sendPendingBtn">Send pending</button>
+            </div>
+            <div class="muted small" id="webhookStatus">Not configured.</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="row spaceBetween">
+          <p class="muted small">
+            Note: This prototype stores data in this browser. For full university use, add a backend + role-based logins.
+          </p>
+          <button id="clearAllBtn" class="danger">Reset all data</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="container footer muted small">
+      Built for quick hackathon submissions — includes README + pitch.
+    </footer>
+
+    <script src="./qrcode.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
